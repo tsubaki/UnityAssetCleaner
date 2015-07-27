@@ -116,6 +116,9 @@ namespace AssetClean
 					i++;
 					EditorUtility.DisplayProgressBar ("delete unused assets", assetPath, (float)i / length);
 					AssetDatabase.DeleteAsset (assetPath);
+					if( File.Exists(assetPath) ){
+						File.Delete(assetPath);
+					}
 				}
 
 				EditorUtility.DisplayProgressBar ("clean directory", "", 1);
