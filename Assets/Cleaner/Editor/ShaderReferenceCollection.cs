@@ -62,6 +62,9 @@ namespace AssetClean
 				List<string> referenceList = new List<string> ();
 				shaderReferenceList.Add (shaderName, referenceList);
 			
+				if( File.Exists(shaderFilePath) == false){
+					continue;
+				}
 				var code = File.ReadAllText (shaderFilePath);
 			
 				foreach (var checkingShaderName in shaderFileList.Keys) {
