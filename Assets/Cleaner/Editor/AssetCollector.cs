@@ -12,14 +12,16 @@ using System.Linq;
 using UnityEditor;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Text;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AssetClean
 {
 	public class AssetCollector
 	{
 		public List<string> deleteFileList = new List<string> ();
-		ClassReferenceCollection classCollection = new ClassReferenceCollection ();
-		ShaderReferenceCollection shaderCollection = new ShaderReferenceCollection ();
+
+		List<CollectionData> referenceCollection = new List<CollectionData>();
 
 		public bool useCodeStrip = true;
 		public bool saveEditorExtensions = true;
@@ -28,25 +30,26 @@ namespace AssetClean
 		{
 			try {
 				deleteFileList.Clear ();
+				referenceCollection.Clear();
 
-				if( useCodeStrip ){
-					classCollection.Collection ();
+				List<IReferenceCollection> collectionList = new List<IReferenceCollection>();
+
+				if( useCodeStrip ) {
+					collectionList.Add( new ClassReferenceCollection(saveEditorExtensions) );
 				}
-				shaderCollection.Collection ();
+
+				collectionList.AddRange( new IReferenceCollection[]{ 
+					new ShaderReferenceCollection (),
+					new AssetReferenceCollection(),
+				});
+
+				foreach(var collection in collectionList ){
+					collection.Init(referenceCollection); 
+					collection.CollectionFiles(); 
+				}
 
 				// Find assets
-				var files = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
-					.Where (item => Path.GetExtension (item) != ".meta")
-					.Where (item => Path.GetExtension (item) != ".js")
-					.Where (item => Path.GetExtension (item) != ".dll")
-					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Gizmos[\\/\\\\]") == false)
-					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Plugins[\\/\\\\]Android[\\/\\\\]") == false)
-					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Plugins[\\/\\\\]iOS[\\/\\\\]") == false)
-					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Resources[\\/\\\\]") == false);
-
-				if( useCodeStrip == false ){
-					files = files.Where( item => Path.GetExtension(item) != ".cs");
-				}
+				var files = StripTargetPathsAll(useCodeStrip);
 
 				foreach (var path in files) {
 					var guid = AssetDatabase.AssetPathToGUID (path);
@@ -62,10 +65,30 @@ namespace AssetClean
 				if( saveEditorExtensions ){
 					UnregistEditorCodes();
 				}
+
 			} finally {
 				EditorUtility.ClearProgressBar ();
 			}
 		}
+
+		List<string> StripTargetPathsAll(bool isUseCodeStrip)
+		{
+			var files = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
+				.Where (item => Path.GetExtension (item) != ".meta")
+					.Where (item => Path.GetExtension (item) != ".js")
+					.Where (item => Path.GetExtension (item) != ".dll")
+					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Gizmos[\\/\\\\]") == false)
+					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Plugins[\\/\\\\]Android[\\/\\\\]") == false)
+					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Plugins[\\/\\\\]iOS[\\/\\\\]") == false)
+					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Resources[\\/\\\\]") == false);
+			
+			if( isUseCodeStrip == false ){
+				files = files.Where( item => Path.GetExtension(item) != ".cs");
+			}
+			
+			return files.ToList();
+		}
+
 		void UnregistReferenceFromResources()
 		{
 			var resourcesFiles = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
@@ -73,6 +96,7 @@ namespace AssetClean
 					.Where (item => Path.GetExtension (item) != ".meta")
 					.ToArray ();
 			foreach (var path in AssetDatabase.GetDependencies (resourcesFiles)) {
+
 				UnregistFromDelteList (AssetDatabase.AssetPathToGUID(path));
 			}
 		}
@@ -85,9 +109,7 @@ namespace AssetClean
 					.Select (item => item.path)
 					.ToArray ();
 			foreach (var path in AssetDatabase.GetDependencies (scenes)) {
-				if( saveEditorExtensions == false ){
-					Debug.Log(path);
-				}
+
 				UnregistFromDelteList (AssetDatabase.AssetPathToGUID(path));
 			} 
 		}
@@ -98,27 +120,29 @@ namespace AssetClean
 			var editorcodes = Directory.GetFiles ("Assets", "*.cs", SearchOption.AllDirectories)
 				.Where (item => Regex.IsMatch (item, "[\\/\\\\]Editor[\\/\\\\]") == true)
 					.ToArray ();
-			
-			var undeleteClassList = classCollection.codeFileList
-				.Where (codefile => codefile.Value.Any( guid => deleteFileList.Contains(guid)) == false)
-					.Select( item => item.Key );
-			
+
 			EditorUtility.DisplayProgressBar ("checking", "check reference from editor codes", 0.8f);
 			
 			foreach (var path in editorcodes) {
-				var code = File.ReadAllText (path);
-				code = Regex.Replace(code, "//.*[\\n\\r]", "");
-				code = Regex.Replace(code, "/\\*.*[\\n\\r]\\*/", "");
+				var code =  ClassReferenceCollection.StripComment( File.ReadAllText (path));
 				if (Regex.IsMatch (code, "(\\[MenuItem|AssetPostprocessor|EditorWindow)")) {
 					UnregistFromDelteList ( AssetDatabase.AssetPathToGUID(path));
 					continue;
 				}
-				
-				foreach (var undeleteClass in undeleteClassList) {
-					if (Regex.IsMatch (code, string.Format ("\\[CustomEditor.*\\(\\s*{0}\\s*\\).*\\]", undeleteClass.Name))) {
-						UnregistFromDelteList (path);
-						continue;
-					}
+			}
+			foreach (var path in editorcodes) {
+				var guid = AssetDatabase.AssetPathToGUID(path);
+
+				if( referenceCollection.Exists(c=>c.fileGuid == guid)  == false ){
+					continue;
+				}
+
+				var referenceGuids = referenceCollection.First(c=>c.fileGuid == guid).referenceGids;
+
+
+
+				if(referenceGuids.Any(c=> deleteFileList.Contains(c) == true ) == false){
+					UnregistFromDelteList ( AssetDatabase.AssetPathToGUID(path));
 				}
 			}
 		}
@@ -129,24 +153,18 @@ namespace AssetClean
 				return;
 			}
 			deleteFileList.Remove (guid);
-			
-			if (classCollection.references.ContainsKey (guid) == true) {
-				
-				foreach (var type in classCollection.references[guid]) {
-					var codePaths = classCollection.codeFileList [type];
-					foreach( var codePath in codePaths){
-						UnregistFromDelteList (codePath);
-					}
+
+			if( referenceCollection.Exists(c=>c.fileGuid == guid)){
+				var refInfo = referenceCollection.First(c=>c.fileGuid == guid);
+				foreach (var referenceGuid in refInfo.referenceGids) {
+					UnregistFromDelteList (referenceGuid);
+
+					var fi = File.AppendText("hoge.txt");
+					fi.WriteLine(AssetDatabase.GUIDToAssetPath(guid) + "->" + AssetDatabase.GUIDToAssetPath(referenceGuid));
+					fi.Close();
 				}
 			}
-			
-			if (shaderCollection.shaderFileList.ContainsValue (guid)) {
-				var shader = shaderCollection.shaderFileList.First (item => item.Value == guid);
-				var shaderAssets = shaderCollection.shaderReferenceList [shader.Key];
-				foreach (var shaderPath in shaderAssets) {
-					UnregistFromDelteList (shaderPath);
-				}
-			}
+
 		}
 	}
 }

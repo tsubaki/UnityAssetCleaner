@@ -14,13 +14,17 @@ using UnityEditor;
 
 namespace AssetClean
 {
-	public class ShaderReferenceCollection
+	public class ShaderReferenceCollection : IReferenceCollection
 	{
 		// shader name / shader file guid
 		public Dictionary<string, string> shaderFileList = new Dictionary<string, string> ();
-		public Dictionary<string, List<string> > shaderReferenceList = new Dictionary<string, List<string>> ();
+		private List<CollectionData> references = new List<CollectionData>();
 
-		public void Collection ()
+		public void Init(List<CollectionData> refs){
+			references = refs;
+		}
+
+		public void CollectionFiles ()
 		{
 			CollectionShaderFiles ();
 			CheckReference ();
@@ -49,7 +53,9 @@ namespace AssetClean
 			var cgincFiles = Directory.GetFiles ("Assets", "*.cginc", SearchOption.AllDirectories);
 			foreach (var cgincPath in cgincFiles) {
 				var file = Path.GetFileName (cgincPath);
-				shaderFileList.Add (file, cgincPath);
+				if( shaderFileList.ContainsKey(file) == false ){
+					shaderFileList.Add (file, cgincPath);
+				}
 			}
 		}
 
@@ -57,20 +63,39 @@ namespace AssetClean
 		{
 			foreach (var shader in shaderFileList) {
 				var shaderFilePath = AssetDatabase.GUIDToAssetPath(shader.Value);
-				var shaderName = shader.Key;
-			
-				List<string> referenceList = new List<string> ();
-				shaderReferenceList.Add (shaderName, referenceList);
-			
 				if( File.Exists(shaderFilePath) == false){
 					continue;
 				}
-				var code = File.ReadAllText (shaderFilePath);
+
+				var guid = shader.Value;
+
+				List<string> referenceList = null;
+				CollectionData reference =  null;
+				
+				if( references.Exists(c=>c.fileGuid == guid) == false ) {
+					referenceList = new List<string>();
+					reference = new CollectionData() {
+						fileGuid = guid,
+						referenceGids = referenceList,
+					};
+					references.Add(reference);
+				}else{
+					reference = references.Find(c=>c.fileGuid == guid);
+					referenceList = reference.referenceGids;
+				}
+
+				var code = ClassReferenceCollection.StripComment( File.ReadAllText (shaderFilePath));
 			
 				foreach (var checkingShaderName in shaderFileList.Keys) {
-					if (Regex.IsMatch (code, string.Format ("{0}", checkingShaderName))) {
-						var filePath = shaderFileList [checkingShaderName];
-						referenceList.Add (filePath);
+					if( checkingShaderName == shader.Key ){
+						continue;
+					}
+
+					if (code.IndexOf(checkingShaderName) != -1 && shaderFileList.ContainsKey(checkingShaderName))  {
+						var fileGuid = shaderFileList [checkingShaderName];
+						if( referenceList.Contains(fileGuid) == false ){
+							referenceList.Add (fileGuid);
+						}
 					}
 				}
 			}
