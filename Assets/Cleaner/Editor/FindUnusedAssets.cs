@@ -108,11 +108,16 @@ namespace AssetClean
 			using (var horizonal = new EditorGUILayout.HorizontalScope("box")) {
 				EditorGUILayout.Space();
 				if (GUILayout.Button ("Exclude from Project", GUILayout.Width (160)) && deleteAssets.Count != 0) {
-					RemoveFiles ();
-					Close ();
+					EditorApplication.delayCall += Exclude;
 				}
 			}
 
+		}
+
+		void Exclude()
+		{
+			RemoveFiles ();
+			Close ();
 		}
 
 	     static void CleanDir()
