@@ -49,7 +49,10 @@ public class AssetReferenceCollection  : IReferenceCollection
 			reference = references.Find(c=>c.fileGuid == guid);
 			referenceList = reference.referenceGids;
 		}
-		
+		if( string.IsNullOrEmpty( AssetDatabase.GUIDToAssetPath(guid) ) == false ){
+			reference.timeStamp = File.GetLastWriteTime(AssetDatabase.GUIDToAssetPath(guid));
+		}
+
 		foreach( var file in referenceFiles){
 			if( referenceList.Contains(file) == false )
 				referenceList.Add( AssetDatabase.AssetPathToGUID(file) );

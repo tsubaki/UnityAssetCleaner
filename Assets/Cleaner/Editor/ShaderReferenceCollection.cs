@@ -84,6 +84,8 @@ namespace AssetClean
 					referenceList = reference.referenceGids;
 				}
 
+				reference.timeStamp = File.GetLastWriteTime(AssetDatabase.GUIDToAssetPath(guid));
+
 				var code = ClassReferenceCollection.StripComment( File.ReadAllText (shaderFilePath));
 			
 				foreach (var checkingShaderName in shaderFileList.Keys) {

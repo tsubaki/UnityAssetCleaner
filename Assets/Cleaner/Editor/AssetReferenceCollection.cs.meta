@@ -1,5 +1,7 @@
 fileFormatVersion: 2
 guid: 805140a4856714e288ea84985d3023df
+labels:
+- ActionGame
 timeCreated: 1438701927
 licenseType: Pro
 MonoImporter:

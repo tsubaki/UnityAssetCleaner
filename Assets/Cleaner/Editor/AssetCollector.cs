@@ -14,23 +14,34 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Xml.Serialization;
 
 namespace AssetClean
 {
 	public class AssetCollector
 	{
-		public List<string> deleteFileList = new List<string> ();
+		static readonly string exportXMLPath = "referencemap.xml";
 
+		public List<string> deleteFileList = new List<string> ();
 		List<CollectionData> referenceCollection = new List<CollectionData>();
 
 		public bool useCodeStrip = true;
 		public bool saveEditorExtensions = true;
 
-		public void Collection ()
+		public void Collection (string[] collectionFolders)
 		{
+
 			try {
+				XmlSerializer serialize = new XmlSerializer(typeof (List<CollectionData>));
 				deleteFileList.Clear ();
 				referenceCollection.Clear();
+				
+				if( File.Exists(exportXMLPath)){
+					using ( var fileStream = new StreamReader(exportXMLPath)){
+						referenceCollection = (List<CollectionData>) serialize.Deserialize(fileStream);
+						fileStream.Close();
+					}
+				}
 
 				List<IReferenceCollection> collectionList = new List<IReferenceCollection>();
 
@@ -49,7 +60,7 @@ namespace AssetClean
 				}
 
 				// Find assets
-				var files = StripTargetPathsAll(useCodeStrip);
+				var files = StripTargetPathsAll(useCodeStrip, collectionFolders);
 
 				foreach (var path in files) {
 					var guid = AssetDatabase.AssetPathToGUID (path);
@@ -66,27 +77,61 @@ namespace AssetClean
 					UnregistEditorCodes();
 				}
 
+				EditorUtility.DisplayProgressBar ("checking", "check reference from ignorelist", 0.8f);
+				UnregistReferenceFromIgnoreList();
+				UnregistReferenceFromExtensionMethod();
+
+				using ( var fileStream = new StreamWriter(exportXMLPath)){
+					serialize.Serialize(fileStream, referenceCollection);
+					fileStream.Close();
+				}
+
 			} finally {
 				EditorUtility.ClearProgressBar ();
 			}
 		}
 
-		List<string> StripTargetPathsAll(bool isUseCodeStrip)
+		List<string> StripTargetPathsAll(bool isUseCodeStrip, string[] pathes)
 		{
-			var files = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
-				.Where (item => Path.GetExtension (item) != ".meta")
+			var files = pathes.SelectMany(c=>Directory.GetFiles (c, "*.*", SearchOption.AllDirectories))
+					.Distinct()
+					.Where (item => Path.GetExtension (item) != ".meta")
 					.Where (item => Path.GetExtension (item) != ".js")
 					.Where (item => Path.GetExtension (item) != ".dll")
 					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Gizmos[\\/\\\\]") == false)
 					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Plugins[\\/\\\\]Android[\\/\\\\]") == false)
 					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Plugins[\\/\\\\]iOS[\\/\\\\]") == false)
 					.Where (item => Regex.IsMatch (item, "[\\/\\\\]Resources[\\/\\\\]") == false);
-			
+
 			if( isUseCodeStrip == false ){
 				files = files.Where( item => Path.GetExtension(item) != ".cs");
 			}
 			
 			return files.ToList();
+		}
+
+		void UnregistReferenceFromIgnoreList()
+		{
+			var codePaths = Directory.GetFiles ("Assets", "*.cs*", SearchOption.AllDirectories);
+
+			foreach (var path in codePaths) {
+				var code =  ClassReferenceCollection.StripComment( File.ReadAllText (path));
+				if (Regex.IsMatch (code, "static\\s*class")) {
+					UnregistFromDelteList ( AssetDatabase.AssetPathToGUID(path));
+					continue;
+				}
+			}
+		}
+
+		void UnregistReferenceFromExtensionMethod()
+		{
+			var resourcesFiles = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
+				.Where (item => Regex.IsMatch (item, "[\\/\\\\]project[\\/\\\\]") == true)
+					.Where (item => Path.GetExtension (item) != ".meta")
+					.ToArray ();
+			foreach (var path in AssetDatabase.GetDependencies (resourcesFiles)) {
+				UnregistFromDelteList (AssetDatabase.AssetPathToGUID(path));
+			}
 		}
 
 		void UnregistReferenceFromResources()
@@ -120,7 +165,7 @@ namespace AssetClean
 			var editorcodes = Directory.GetFiles ("Assets", "*.cs", SearchOption.AllDirectories)
 				.Where (item => Regex.IsMatch (item, "[\\/\\\\]Editor[\\/\\\\]") == true)
 					.ToArray ();
-
+			
 			EditorUtility.DisplayProgressBar ("checking", "check reference from editor codes", 0.8f);
 			
 			foreach (var path in editorcodes) {
@@ -158,10 +203,6 @@ namespace AssetClean
 				var refInfo = referenceCollection.First(c=>c.fileGuid == guid);
 				foreach (var referenceGuid in refInfo.referenceGids) {
 					UnregistFromDelteList (referenceGuid);
-
-					var fi = File.AppendText("hoge.txt");
-					fi.WriteLine(AssetDatabase.GUIDToAssetPath(guid) + "->" + AssetDatabase.GUIDToAssetPath(referenceGuid));
-					fi.Close();
 				}
 			}
 
