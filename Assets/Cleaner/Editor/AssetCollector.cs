@@ -116,7 +116,7 @@ namespace AssetClean
 
 			foreach (var path in codePaths) {
 				var code =  ClassReferenceCollection.StripComment( File.ReadAllText (path));
-				if (Regex.IsMatch (code, "static\\s*class")) {
+				if (Regex.IsMatch (code, "static\\s*(partial)*\\s*class")) {
 					UnregistFromDelteList ( AssetDatabase.AssetPathToGUID(path));
 					continue;
 				}

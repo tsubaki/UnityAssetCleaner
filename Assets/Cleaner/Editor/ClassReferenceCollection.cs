@@ -186,8 +186,8 @@ namespace AssetClean
 						}
 					}
 
+					string typeName = type.IsGenericTypeDefinition ? type.GetGenericTypeDefinition ().Name.Split ('`') [0] : type.Name;
 					if (type.IsClass) {
-						string typeName = type.IsGenericTypeDefinition ? type.GetGenericTypeDefinition ().Name.Split ('`') [0] : type.Name;
 						if (Regex.IsMatch (code, string.Format ("class\\s*{0}?[\\s:<{{]", typeName))) {
 							typeList.Add (type);
 
@@ -200,8 +200,8 @@ namespace AssetClean
 							continue;
 						}
 					}else if( type.IsInterface){
-						
-						if (Regex.IsMatch (code, string.Format ("interface\\s*{0}[\\s{{]", type.Name))) {
+
+						if (Regex.IsMatch (code, string.Format ("interface\\s*{0}[\\s<{{]", typeName))) {
 							typeList.Add (type);
 							continue;
 						}
@@ -212,11 +212,11 @@ namespace AssetClean
 							continue;
 						}
 					} else {
-						if (Regex.IsMatch (code, string.Format ("struct\\s*{0}[\\s:<{{]", type))) {
+						if (Regex.IsMatch (code, string.Format ("struct\\s*{0}[\\s:<{{]", typeName))) {
 							typeList.Add (type);
 							continue;
 						}
-						if (Regex.IsMatch (code, string.Format ("delegate\\s*{0}\\s\\(", type.Name))) {
+						if (Regex.IsMatch (code, string.Format ("delegate\\s*{0}\\s\\(", typeName))) {
 							typeList.Add (type);
 							continue;
 						}
@@ -300,11 +300,11 @@ namespace AssetClean
 
 				if (type.IsGenericTypeDefinition) {
 					string typeName = type.GetGenericTypeDefinition ().Name.Split ('`') [0];
-					match = string.Format ("[\\]\\[\\.\\s<(]{0}[\\.\\s\\n\\r>,<(){{]", typeName);
+					match = string.Format ("[!|&\\]\\[\\.\\s<(]{0}[\\.\\s\\n\\r>,<(){{]", typeName);
 
 				} else {
-					string typeName = type.Name.Replace ("Attribute", "");
-					match = string.Format ("[\\]\\[\\.\\s<(]{0}[\\.\\s\\n\\r>,<(){{\\]]", typeName);
+					string typeName = type.Name.Split ('`') [0].Replace ("Attribute", "");
+					match = string.Format ("[!|&\\]\\[\\.\\s<(]{0}[\\.\\s\\n\\r>,<(){{\\]]", typeName);
 
 
 					//  check Extension Methods
