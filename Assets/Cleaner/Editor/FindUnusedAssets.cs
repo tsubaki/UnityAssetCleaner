@@ -78,6 +78,32 @@ namespace AssetClean
 			return ! paths.Any(c=> string.IsNullOrEmpty(c) );
 		}
 
+		[MenuItem("Assets/Delete Unused Assets/unused only resources", false, 52)]
+		static void InitAssetsOnlyResources ()
+		{
+			var paths = Selection.objects
+				.Select(c=>AssetDatabase.GetAssetPath(c))
+					.Where(c=>Directory.Exists(c));
+			if( paths.Any(c=> string.IsNullOrEmpty(c) ) ){
+				return;
+			}
+			
+			var window = FindUnusedAssets.CreateInstance<FindUnusedAssets> ();
+			window.collection.useCodeStrip = false;
+			window.collection.Collection (paths.ToArray());
+			window.CopyDeleteFileList (window.collection.deleteFileList);
+			
+			window.Show ();
+		}
+		[MenuItem("Assets/Delete Unused Assets/unused only resources", true)]
+		static bool InitAssetsOnlyResourcesA ()
+		{
+			var paths = Selection.objects
+				.Select(c=>AssetDatabase.GetAssetPath(c))
+					.Where(c=>Directory.Exists(c));
+			return ! paths.Any(c=> string.IsNullOrEmpty(c) );
+		}
+
 		
 		void OnGUI ()
 		{

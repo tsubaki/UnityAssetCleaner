@@ -112,7 +112,7 @@ namespace AssetClean
 
 		void UnregistReferenceFromIgnoreList()
 		{
-			var codePaths = Directory.GetFiles ("Assets", "*.cs*", SearchOption.AllDirectories);
+			var codePaths = deleteFileList.Where( fileName => Path.GetExtension(fileName) == ".cs");
 
 			foreach (var path in codePaths) {
 				var code =  ClassReferenceCollection.StripComment( File.ReadAllText (path));
@@ -125,10 +125,9 @@ namespace AssetClean
 
 		void UnregistReferenceFromExtensionMethod()
 		{
-			var resourcesFiles = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
-				.Where (item => Regex.IsMatch (item, "[\\/\\\\]project[\\/\\\\]") == true)
-					.Where (item => Path.GetExtension (item) != ".meta")
-					.ToArray ();
+			var resourcesFiles = deleteFileList
+				.Where (item => Path.GetExtension (item) != ".meta")
+				.ToArray ();
 			foreach (var path in AssetDatabase.GetDependencies (resourcesFiles)) {
 				UnregistFromDelteList (AssetDatabase.AssetPathToGUID(path));
 			}
@@ -136,10 +135,10 @@ namespace AssetClean
 
 		void UnregistReferenceFromResources()
 		{
-			var resourcesFiles = Directory.GetFiles ("Assets", "*.*", SearchOption.AllDirectories)
+			var resourcesFiles = deleteFileList
 				.Where (item => Regex.IsMatch (item, "[\\/\\\\]Resources[\\/\\\\]") == true)
-					.Where (item => Path.GetExtension (item) != ".meta")
-					.ToArray ();
+				.Where (item => Path.GetExtension (item) != ".meta")
+				.ToArray ();
 			foreach (var path in AssetDatabase.GetDependencies (resourcesFiles)) {
 
 				UnregistFromDelteList (AssetDatabase.AssetPathToGUID(path));
@@ -162,9 +161,10 @@ namespace AssetClean
 		void UnregistEditorCodes()
 		{
 			// Exclude objects that reference from Editor API
-			var editorcodes = Directory.GetFiles ("Assets", "*.cs", SearchOption.AllDirectories)
+			var editorcodes = deleteFileList
+				.Where( fileName => Path.GetExtension(fileName) == ".cs")
 				.Where (item => Regex.IsMatch (item, "[\\/\\\\]Editor[\\/\\\\]") == true)
-					.ToArray ();
+				.ToArray ();
 			
 			EditorUtility.DisplayProgressBar ("checking", "check reference from editor codes", 0.8f);
 			
