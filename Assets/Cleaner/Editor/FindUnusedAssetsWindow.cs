@@ -14,7 +14,7 @@ using System.Linq;
 
 namespace AssetClean
 {
-	public class FindUnusedAssets : EditorWindow
+	public class FindUnusedAssetsWindow : EditorWindow
 	{
 		AssetCollector collection = new AssetCollector ();
 		List<DeleteAsset> deleteAssets = new List<DeleteAsset> ();
@@ -23,7 +23,7 @@ namespace AssetClean
 		[MenuItem("Window/Delete Unused Assets/only resource", false, 50)]
 		static void InitWithoutCode ()
 		{
-			var window = FindUnusedAssets.CreateInstance<FindUnusedAssets> ();
+			var window = FindUnusedAssetsWindow.CreateInstance<FindUnusedAssetsWindow> ();
 			window.collection.useCodeStrip = false;
 			window.collection.Collection (new string[]{"Assets"});
 			window.CopyDeleteFileList (window.collection.deleteFileList);
@@ -34,7 +34,7 @@ namespace AssetClean
 		[MenuItem("Window/Delete Unused Assets/unused by editor", false, 51)]
 		static void InitWithout ()
 		{
-			var window = FindUnusedAssets.CreateInstance<FindUnusedAssets> ();
+			var window = FindUnusedAssetsWindow.CreateInstance<FindUnusedAssetsWindow> ();
 			window.collection.Collection (new string[]{"Assets"});
 			window.CopyDeleteFileList (window.collection.deleteFileList);
 			
@@ -44,7 +44,7 @@ namespace AssetClean
 		[MenuItem("Window/Delete Unused Assets/unused by game", false, 52)]
 		static void Init ()
 		{
-			var window = FindUnusedAssets.CreateInstance<FindUnusedAssets> ();
+			var window = FindUnusedAssetsWindow.CreateInstance<FindUnusedAssetsWindow> ();
 			window.collection.saveEditorExtensions = false;
 			window.collection.Collection (new string[]{"Assets"});
 			window.CopyDeleteFileList (window.collection.deleteFileList);
@@ -52,31 +52,33 @@ namespace AssetClean
 			window.Show ();
 		}
 
-		[MenuItem("Assets/Delete Unused Assets/unused by editor", false, 52)]
-		static void InitAssets ()
-		{
-			var paths = Selection.objects
-				.Select(c=>AssetDatabase.GetAssetPath(c))
-				.Where(c=>Directory.Exists(c));
-			if( paths.Any(c=> string.IsNullOrEmpty(c) ) ){
-				return;
-			}
+//		[MenuItem("Assets/Delete Unused Assets/unused by editor", false, 52)]
+//		static void InitAssets ()
+//		{
+//			var paths = Selection.objects
+//				.Select(c=>AssetDatabase.GetAssetPath(c))
+//				.Where(c=>Directory.Exists(c));
+//			if( paths.Any(c=> string.IsNullOrEmpty(c) ) ){
+//				return;
+//			}
+//
+//			var window = FindUnusedAssetsWindow.CreateInstance<FindUnusedAssetsWindow> ();
+//			window.collection.Collection (paths.ToArray());
+//			window.CopyDeleteFileList (window.collection.deleteFileList);
+//			
+//			window.Show ();
+//		}
+//
+//		[MenuItem("Assets/Delete Unused Assets/unused by editor", true)]
+//		static bool InitAssetsA ()
+//		{
+//			var paths = Selection.objects
+//				.Select(c=>AssetDatabase.GetAssetPath(c))
+//				.Where(c=>Directory.Exists(c));
+//			return ! paths.Any(c=> string.IsNullOrEmpty(c) );
+//		}
 
-			var window = FindUnusedAssets.CreateInstance<FindUnusedAssets> ();
-			window.collection.Collection (paths.ToArray());
-			window.CopyDeleteFileList (window.collection.deleteFileList);
-			
-			window.Show ();
-		}
 
-		[MenuItem("Assets/Delete Unused Assets/unused by editor", true)]
-		static bool InitAssetsA ()
-		{
-			var paths = Selection.objects
-				.Select(c=>AssetDatabase.GetAssetPath(c))
-				.Where(c=>Directory.Exists(c));
-			return ! paths.Any(c=> string.IsNullOrEmpty(c) );
-		}
 
 		[MenuItem("Assets/Delete Unused Assets/unused only resources", false, 52)]
 		static void InitAssetsOnlyResources ()
@@ -88,7 +90,7 @@ namespace AssetClean
 				return;
 			}
 			
-			var window = FindUnusedAssets.CreateInstance<FindUnusedAssets> ();
+			var window = FindUnusedAssetsWindow.CreateInstance<FindUnusedAssetsWindow> ();
 			window.collection.useCodeStrip = false;
 			window.collection.Collection (paths.ToArray());
 			window.CopyDeleteFileList (window.collection.deleteFileList);
@@ -104,12 +106,20 @@ namespace AssetClean
 			return ! paths.Any(c=> string.IsNullOrEmpty(c) );
 		}
 
-		
+		[MenuItem("Window/Delete Unused Assets/Clear cache")]
+		static void ClearCache()
+		{
+			File.Delete(AssetClean.AssetCollector.exportXMLPath);
+			File.Delete(AssetClean.ClassReferenceCollection.xmlPath);
+
+			EditorUtility.DisplayDialog("clear file", "clear file", "OK");
+		}
+
+
 		void OnGUI ()
 		{
 			using (var horizonal = new EditorGUILayout.HorizontalScope("box")) {
 				EditorGUILayout.LabelField ("delete unreference assets from buildsettings and resources");
-				EditorGUILayout.TextField("", EditorStyles.miniTextField);
 			}
 
 			using (var scrollScope = new EditorGUILayout.ScrollViewScope(scroll)) {
