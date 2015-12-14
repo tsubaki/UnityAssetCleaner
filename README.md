@@ -1,4 +1,5 @@
 #UnityAssetCleaner
+![https://raw.github.com/wiki/tsubaki/UnityAssetCleaner/title.png](https://raw.github.com/wiki/tsubaki/UnityAssetCleaner/title.png)
 
 UnityAssetCleaner will remove unused assets, script and shader in your game and projects.
 
@@ -9,7 +10,9 @@ UnityAssetCleaner will remove unused assets, script and shader in your game and 
 2.  editor lists unused assets from your game.  
 if you do not want to delete it, you can uncheck it.
 ![https://raw.github.com/wiki/tsubaki/UnityAssetCleaner/lists.png](https://raw.github.com/wiki/tsubaki/UnityAssetCleaner/lists.png)
-3.  select "Exclude from project"
+3.  select "Exclude from project"  
+export unused assets by unitypackage.
+![https://raw.github.com/wiki/tsubaki/UnityAssetCleaner/export.png](https://raw.github.com/wiki/tsubaki/UnityAssetCleaner/export.png)
 
 if you want to remove resource only, you can use menu/window/delete unused assets/resource only.
 
