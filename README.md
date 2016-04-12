@@ -16,6 +16,10 @@ export unused assets by unitypackage.
 
 if you want to remove resource only, you can use menu/window/delete unused assets/resource only.
 
+##Note
+
+Delete of judgment, to determine from dependence from BuildSettings and Resources.
+
 ##tips
 
 please use “menu/window/delete unused assets/cache clear” in some time.
